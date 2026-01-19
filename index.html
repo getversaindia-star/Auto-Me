@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUTO ME | Real Instagram Automation</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            900: '#14532d',
+                        },
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .gradient-text { background: linear-gradient(to right, #4ade80, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .loader { border: 3px solid rgba(255,255,255,0.1); border-left-color: #22c55e; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hide { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Modal Styles */
+        .modal-overlay { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav id="navbar" class="w-full glass-panel sticky top-0 z-50 border-b border-gray-800 hide">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="router.navigate('dashboard')">
+                    <i class="fa-brands fa-instagram text-brand-500 text-2xl"></i>
+                    <span class="font-bold text-xl tracking-tight">AUTO<span class="text-brand-500">ME</span></span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 px-3 py-1 bg-gray-800 rounded-full border border-gray-700">
+                        <div class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span id="nav-user-name" class="text-xs font-medium text-gray-300">Connecting...</span>
+                    </div>
+                    <button onclick="authService.logout()" class="text-gray-400 hover:text-white transition">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="app-container" class="flex-grow w-full relative">
+        
+        <!-- View: Landing -->
+        <section id="view-landing" class="absolute inset-0 flex items-center justify-center bg-[url('https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1974')] bg-cover bg-center">
+            <div class="absolute inset-0 bg-dark-bg/90"></div>
+            <div class="relative z-10 max-w-3xl mx-auto text-center px-4 fade-in">
+                <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
+                    Real Instagram <br> <span class="gradient-text">Automation</span>
+                </h1>
+                <p class="text-gray-400 text-lg mb-10">Connect your real account to start automating DMs.</p>
+                
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <!-- Method 1: OAuth (Secure) -->
+                    <button onclick="authService.loginWithOAuth()" class="w-full sm:w-auto px-8 py-4 text-lg font-bold text-white bg-brand-600 rounded-xl hover:bg-brand-500 transition shadow-lg shadow-brand-500/30 flex items-center justify-center gap-3">
+                        <i class="fa-brands fa-facebook"></i>
+                        Connect with Facebook
+                        <span class="text-xs font-normal opacity-75 block text-left ml-2 border-l pl-2 border-white/20">
+                            Recommended<br>Secure API
+                        </span>
+                    </button>
+
+                    <!-- Method 2: Manual (User Request) -->
+                    <button onclick="ui.toggleModal('manual-login-modal', true)" class="w-full sm:w-auto px-8 py-4 text-lg font-bold text-gray-300 bg-gray-800 rounded-xl hover:bg-gray-700 transition border border-gray-700 flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-key"></i>
+                        Manual Login
+                    </button>
+                </div>
+                <p class="mt-6 text-xs text-gray-500">Secure connection powered by your Backend.</p>
+            </div>
+        </section>
+
+        <!-- View: Dashboard -->
+        <section id="view-dashboard" class="max-w-7xl mx-auto px-4 py-8 hide fade-in">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-2xl font-bold text-white">Your Reels</h2>
+                <button onclick="dataService.fetchReels()" class="text-sm text-brand-500 hover:text-brand-400"><i class="fa-solid fa-sync"></i> Refresh</button>
+            </div>
+            <div id="reels-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+            <div id="reels-loading" class="flex justify-center py-10 hide"><div class="loader"></div></div>
+        </section>
+
+    </main>
+
+    <!-- Modal: Manual Login -->
+    <div id="manual-login-modal" class="fixed inset-0 z-[60] hide">
+        <div class="absolute inset-0 modal-overlay" onclick="ui.toggleModal('manual-login-modal', false)"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-dark-card border border-gray-700 w-full max-w-md p-8 rounded-2xl shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-gray-800 rounded-full mb-3">
+                    <i class="fa-brands fa-instagram text-2xl text-white"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">Connect Manually</h3>
+                <p class="text-sm text-gray-400 mt-1">Enter your credentials to connect your backend.</p>
+            </div>
+
+            <form onsubmit="authService.loginManual(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Instagram Username</label>
+                        <input type="text" id="manual-username" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-brand-500 outline-none" placeholder="@username" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Password</label>
+                        <input type="password" id="manual-password" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-brand-500 outline-none" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg flex gap-3">
+                    <i class="fa-solid fa-triangle-exclamation text-yellow-500 mt-1"></i>
+                    <p class="text-xs text-yellow-200/80">
+                        <strong>Warning:</strong> Connecting via password is less stable. If you have 2FA enabled, this may fail. Use "Connect with Facebook" for best results.
+                    </p>
+                </div>
+
+                <button type="submit" id="manual-btn" class="w-full mt-6 bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2">
+                    <span>Connect Account</span>
+                    <div id="manual-loader" class="loader w-4 h-4 border-white/30 border-l-white hide"></div>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-[70] transform translate-y-20 opacity-0 transition-all duration-300">
+        <div class="bg-dark-card border border-gray-700 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-brand-500 text-xl"></i>
+            <div><h4 id="toast-title" class="font-bold text-sm">Success</h4><p id="toast-msg" class="text-xs text-gray-400">Action completed.</p></div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIG
+        const CONFIG = {
+            backendUrl: 'https://auto-me-backend.onrender.com', 
+            // backendUrl: 'http://localhost:3000', // Uncomment for local testing
+            firebase: {
+                apiKey: "AIzaSyBAwhYNk6eEVESzO5LbfvC2p_hwAB3t82k",
+                authDomain: "auto-me-3e30e.firebaseapp.com",
+                projectId: "auto-me-3e30e",
+                storageBucket: "auto-me-3e30e.firebasestorage.app",
+                messagingSenderId: "55458031917",
+                appId: "1:55458031917:web:067750768672e03bf0cba4"
+            }
+        };
+
+        // INIT FIREBASE
+        firebase.initializeApp(CONFIG.firebase);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // STATE
+        const state = { 
+            user: null,
+            authToken: localStorage.getItem('auto_me_token') || null 
+        };
+
+        // UI UTILS
+        const ui = {
+            toast: (title, msg, type = 'success') => {
+                const el = document.getElementById('toast');
+                document.getElementById('toast-title').innerText = title;
+                document.getElementById('toast-msg').innerText = msg;
+                document.getElementById('toast-icon').className = type === 'error' ? 'fa-solid fa-circle-xmark text-red-500 text-xl' : 'fa-solid fa-circle-check text-brand-500 text-xl';
+                el.classList.remove('translate-y-20', 'opacity-0');
+                setTimeout(() => el.classList.add('translate-y-20', 'opacity-0'), 3000);
+            },
+            toggleModal: (id, show) => {
+                const el = document.getElementById(id);
+                if(show) el.classList.remove('hide');
+                else el.classList.add('hide');
+            }
+        };
+
+        // ROUTER
+        const router = {
+            navigate: (view) => {
+                document.getElementById('view-landing').classList.add('hide');
+                document.getElementById('view-dashboard').classList.add('hide');
+                document.getElementById('navbar').classList.add('hide');
+
+                if (view === 'dashboard' && state.user) {
+                    document.getElementById('view-dashboard').classList.remove('hide');
+                    document.getElementById('navbar').classList.remove('hide');
+                    dataService.fetchReels();
+                } else {
+                    document.getElementById('view-landing').classList.remove('hide');
+                }
+            }
+        };
+
+        // AUTH SERVICE
+        const authService = {
+            // METHOD 1: OAuth (Redirects to Backend)
+            loginWithOAuth: () => {
+                ui.toast('Redirecting...', 'Connecting to secure Instagram login');
+                // Redirect to your backend which handles the Meta OAuth handshake
+                window.location.href = `${CONFIG.backendUrl}/auth`;
+            },
+
+            // METHOD 2: Manual Login (Sends creds to Backend)
+            loginManual: async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('manual-btn');
+                const loader = document.getElementById('manual-loader');
+                const user = document.getElementById('manual-username').value;
+                const pass = document.getElementById('manual-password').value;
+
+                btn.disabled = true;
+                loader.classList.remove('hide');
+
+                try {
+                    // Send credentials to your backend endpoint
+                    const res = await fetch(`${CONFIG.backendUrl}/connect-manual`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: user, password: pass })
+                    });
+
+                    const data = await res.json();
+                    
+                    if (!res.ok) throw new Error(data.error || 'Connection failed');
+
+                    // If backend returns a custom token or session ID
+                    state.authToken = data.token;
+                    localStorage.setItem('auto_me_token', data.token);
+                    
+                    // Create a dummy Firebase user session for UI compatibility
+                    await auth.signInAnonymously();
+                    await db.collection('users').doc(auth.currentUser.uid).set({
+                        username: user,
+                        connectedAt: new Date()
+                    }, { merge: true });
+
+                    ui.toggleModal('manual-login-modal', false);
+                    ui.toast('Connected', 'Instagram account linked successfully');
+                    
+                } catch (err) {
+                    console.error(err);
+                    ui.toast('Connection Failed', err.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    loader.classList.add('hide');
+                }
+            },
+
+            logout: () => {
+                auth.signOut();
+                localStorage.removeItem('auto_me_token');
+                state.authToken = null;
+                router.navigate('landing');
+            },
+
+            checkLogin: () => {
+                // Check if we just came back from OAuth redirect
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token');
+                const username = urlParams.get('username');
+
+                if (token) {
+                    // Backend sent us back with a token!
+                    localStorage.setItem('auto_me_token', token);
+                    state.authToken = token;
+                    
+                    // Update UI
+                    auth.signInAnonymously().then(() => {
+                         if(username) {
+                             document.getElementById('nav-user-name').innerText = '@' + username;
+                             // Clean URL
+                             window.history.replaceState({}, document.title, "/");
+                         }
+                    });
+                }
+
+                auth.onAuthStateChanged(user => {
+                    if (user || state.authToken) {
+                        state.user = user || { uid: 'manual_user' };
+                        router.navigate('dashboard');
+                    } else {
+                        router.navigate('landing');
+                    }
+                });
+            }
+        };
+
+        // DATA SERVICE
+        const dataService = {
+            fetchReels: async () => {
+                const grid = document.getElementById('reels-grid');
+                const loader = document.getElementById('reels-loading');
+                
+                grid.innerHTML = '';
+                loader.classList.remove('hide');
+
+                try {
+                    // Use the custom token we got from login
+                    const res = await fetch(`${CONFIG.backendUrl}/reels`, {
+                        headers: { 
+                            'Authorization': `Bearer ${state.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!res.ok) throw new Error('Failed to fetch reels from backend');
+                    
+                    const reels = await res.json();
+                    
+                    loader.classList.add('hide');
+                    
+                    if (reels.length === 0) {
+                        grid.innerHTML = '<p class="text-gray-500 col-span-4 text-center">No reels found on this account.</p>';
+                        return;
+                    }
+
+                    reels.forEach(reel => {
+                        grid.innerHTML += `
+                            <div class="glass-panel rounded-lg overflow-hidden cursor-pointer hover:border-brand-500 transition">
+                                <img src="${reel.thumbnail_url || reel.media_url}" class="w-full aspect-[9/16] object-cover">
+                                <div class="p-2">
+                                    <p class="text-xs text-gray-300 line-clamp-1">${reel.caption || 'No Caption'}</p>
+                                    <div class="flex justify-between mt-1 text-xs text-gray-500">
+                                        <span><i class="fa-solid fa-eye"></i> ${reel.view_count || 0}</span>
+                                        <span><i class="fa-solid fa-heart"></i> ${reel.like_count || 0}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                } catch (error) {
+                    console.error(error);
+                    loader.classList.add('hide');
+                    // Only show mock data if backend specifically fails
+                    grid.innerHTML = `
+                        <div class="col-span-4 text-center py-10">
+                            <i class="fa-solid fa-triangle-exclamation text-yellow-500 text-3xl mb-2"></i>
+                            <h3 class="text-white font-bold">Backend Connection Failed</h3>
+                            <p class="text-gray-400 text-sm mb-4">${error.message}</p>
+                            <button onclick="dataService.fetchReels()" class="text-brand-500 underline">Try Again</button>
+                        </div>
+                    `;
+                }
+            }
+        };
+
+        // START
+        authService.checkLogin();
+    </script>
+</body>
+</html>
+
+
